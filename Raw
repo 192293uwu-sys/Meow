@@ -8,7 +8,10 @@ local targetPlayer = nil
 local teleportConnection = nil
 local originalCFrame = nil
 
--- Create ScreenGui & Stop Button (visible, top-right)
+-- Wait for the teleport surface
+local baseplate = workspace:WaitForChild("BasePlate"):WaitForChild("TopBaseplate")
+
+-- STOP button UI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "TeleportGui"
 screenGui.ResetOnSpawn = false
@@ -27,71 +30,70 @@ stopButton.Font = Enum.Font.SourceSansBold
 stopButton.Visible = false
 stopButton.Parent = screenGui
 
-local baseplate = workspace:WaitForChild("BasePlate"):WaitForChild("TopBaseplate")
-local belowBaseplateY = baseplate.Position.Y + 8.7 -- fixed Y
-
 local function stopTeleport()
-    if not teleporting then return end
-    teleporting = false
+	if not teleporting then return end
+	teleporting = false
 
-    if teleportConnection then
-        teleportConnection:Disconnect()
-        teleportConnection = nil
-    end
+	if teleportConnection then
+		teleportConnection:Disconnect()
+		teleportConnection = nil
+	end
 
-    stopButton.Visible = false
+	stopButton.Visible = false
 
-    local character = LocalPlayer.Character
-    if character and character:FindFirstChild("HumanoidRootPart") and originalCFrame then
-        -- Instantly teleport back to original position (no tween)
-        character.HumanoidRootPart.CFrame = originalCFrame
-    end
+	local char = LocalPlayer.Character
+	if char and char:FindFirstChild("HumanoidRootPart") and originalCFrame then
+		char.HumanoidRootPart.CFrame = originalCFrame
+	end
 
-    targetPlayer = nil
-    originalCFrame = nil
+	targetPlayer = nil
+	originalCFrame = nil
 end
 
 stopButton.MouseButton1Click:Connect(stopTeleport)
 
 local function startTeleport(player)
-    if teleporting then return end
-    teleporting = true
-    targetPlayer = player
-    stopButton.Visible = true
+	if teleporting then return end
+	teleporting = true
+	targetPlayer = player
+	stopButton.Visible = true
 
-    local character = LocalPlayer.Character
-    if character and character:FindFirstChild("HumanoidRootPart") then
-        originalCFrame = character.HumanoidRootPart.CFrame
-    else
-        originalCFrame = nil
-    end
+	local char = LocalPlayer.Character
+	if char and char:FindFirstChild("HumanoidRootPart") then
+		originalCFrame = char.HumanoidRootPart.CFrame
+	end
 
-    teleportConnection = RunService.Heartbeat:Connect(function()
-        if not teleporting then return end
-        local character = LocalPlayer.Character
-        local targetChar = targetPlayer and targetPlayer.Character
+	teleportConnection = RunService.Heartbeat:Connect(function()
+		if not teleporting then return end
 
-        if character and targetChar and character:FindFirstChild("HumanoidRootPart") and targetChar:FindFirstChild("HumanoidRootPart") then
-            local targetHRP = targetChar.HumanoidRootPart
+		local char = LocalPlayer.Character
+		local targetChar = targetPlayer and targetPlayer.Character
 
-            character.HumanoidRootPart.CFrame = CFrame.new(targetHRP.Position.X, belowBaseplateY, targetHRP.Position.Z) * CFrame.Angles(math.rad(90), 0, 0)
-        else
-            stopTeleport()
-        end
-    end)
+		if char and targetChar and char:FindFirstChild("HumanoidRootPart") and targetChar:FindFirstChild("HumanoidRootPart") then
+			local targetHRP = targetChar.HumanoidRootPart
+
+			-- Always get latest baseplate height
+			local plateY = baseplate.Position.Y - (baseplate.Size.Y / 2) + 18.3 -- 0.5 studs below plate surface
+
+			-- Server-visible teleport
+			char.HumanoidRootPart.CFrame = CFrame.new(targetHRP.Position.X, plateY, targetHRP.Position.Z) 
+				* CFrame.Angles(math.rad(90), 0, 0)
+		else
+			stopTeleport()
+		end
+	end)
 end
 
 Mouse.Button1Down:Connect(function()
-    if teleporting then return end
-
-    local target = Mouse.Target
-    if target then
-        local character = target:FindFirstAncestorOfClass("Model")
-        if character then
-            local player = Players:GetPlayerFromCharacter(character)
-            if player and player ~= LocalPlayer then
-                startTeleport(player)
-            end
-        end
-    end
+	if teleporting then return end
+	local target = Mouse.Target
+	if target then
+		local character = target:FindFirstAncestorOfClass("Model")
+		if character then
+			local player = Players:GetPlayerFromCharacter(character)
+			if player and player ~= LocalPlayer then
+				startTeleport(player)
+			end
+		end
+	end
 end)
