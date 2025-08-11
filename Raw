@@ -1,0 +1,97 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+local teleporting = false
+local targetPlayer = nil
+local teleportConnection = nil
+local originalCFrame = nil
+
+-- Create ScreenGui & Stop Button (visible, top-right)
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "TeleportGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local stopButton = Instance.new("TextButton")
+stopButton.Size = UDim2.new(0, 180, 0, 60)
+stopButton.Position = UDim2.new(1, -190, 0, 20)
+stopButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+stopButton.BorderSizePixel = 3
+stopButton.BorderColor3 = Color3.new(1, 1, 1)
+stopButton.TextColor3 = Color3.new(1, 1, 1)
+stopButton.Text = "STOP TELEPORT"
+stopButton.TextScaled = true
+stopButton.Font = Enum.Font.SourceSansBold
+stopButton.Visible = false
+stopButton.Parent = screenGui
+
+local baseplate = workspace:WaitForChild("BasePlate"):WaitForChild("TopBaseplate")
+local belowBaseplateY = baseplate.Position.Y + 8.7 -- fixed Y
+
+local function stopTeleport()
+    if not teleporting then return end
+    teleporting = false
+
+    if teleportConnection then
+        teleportConnection:Disconnect()
+        teleportConnection = nil
+    end
+
+    stopButton.Visible = false
+
+    local character = LocalPlayer.Character
+    if character and character:FindFirstChild("HumanoidRootPart") and originalCFrame then
+        -- Instantly teleport back to original position (no tween)
+        character.HumanoidRootPart.CFrame = originalCFrame
+    end
+
+    targetPlayer = nil
+    originalCFrame = nil
+end
+
+stopButton.MouseButton1Click:Connect(stopTeleport)
+
+local function startTeleport(player)
+    if teleporting then return end
+    teleporting = true
+    targetPlayer = player
+    stopButton.Visible = true
+
+    local character = LocalPlayer.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        originalCFrame = character.HumanoidRootPart.CFrame
+    else
+        originalCFrame = nil
+    end
+
+    teleportConnection = RunService.Heartbeat:Connect(function()
+        if not teleporting then return end
+        local character = LocalPlayer.Character
+        local targetChar = targetPlayer and targetPlayer.Character
+
+        if character and targetChar and character:FindFirstChild("HumanoidRootPart") and targetChar:FindFirstChild("HumanoidRootPart") then
+            local targetHRP = targetChar.HumanoidRootPart
+
+            character.HumanoidRootPart.CFrame = CFrame.new(targetHRP.Position.X, belowBaseplateY, targetHRP.Position.Z) * CFrame.Angles(math.rad(90), 0, 0)
+        else
+            stopTeleport()
+        end
+    end)
+end
+
+Mouse.Button1Down:Connect(function()
+    if teleporting then return end
+
+    local target = Mouse.Target
+    if target then
+        local character = target:FindFirstAncestorOfClass("Model")
+        if character then
+            local player = Players:GetPlayerFromCharacter(character)
+            if player and player ~= LocalPlayer then
+                startTeleport(player)
+            end
+        end
+    end
+end)
