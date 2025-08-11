@@ -1,0 +1,98 @@
+local player = game:GetService("Players").LocalPlayer
+local runService = game:GetService("RunService")
+local vr = game:GetService("VirtualInputManager")
+
+-- Enhanced debug system with visual markers
+local function debugPrint(message)
+    print("[🎁 DEBUG] " .. os.date("%H:%M:%S") .. " - " .. message)
+end
+
+-- Visual indicator for click position (optional)
+local marker = Instance.new("Part")
+marker.Anchored = true
+marker.Size = Vector3.new(10, 10, 10)
+marker.Color = Color3.fromRGB(255, 0, 0)
+marker.Transparency = 0.7
+marker.CanCollide = false
+marker.Parent = workspace.Terrain
+
+-- Precise button clicker
+local function clickAcceptButton()
+    local success, acceptButton = pcall(function()
+        return player.PlayerGui
+            :FindFirstChild("Gift_Notification") and
+            player.PlayerGui.Gift_Notification:FindFirstChild("Frame") and
+            player.PlayerGui.Gift_Notification.Frame:FindFirstChild("Gift_Notification") and
+            player.PlayerGui.Gift_Notification.Frame.Gift_Notification:FindFirstChild("Holder") and
+            player.PlayerGui.Gift_Notification.Frame.Gift_Notification.Holder:FindFirstChild("Frame") and
+            player.PlayerGui.Gift_Notification.Frame.Gift_Notification.Holder.Frame:FindFirstChild("Accept")
+    end)
+
+    if not success or not acceptButton then return false end
+
+    -- Calculate exact click position (with debug marker)
+    local absPos = acceptButton.AbsolutePosition
+    local absSize = acceptButton.AbsoluteSize
+    
+    -- Pixel-perfect center coordinates
+    local clickX = math.floor(absPos.X + absSize.X/2)
+    local clickY = math.floor(absPos.Y + absSize.Y/2)
+    
+    -- Show visual marker (optional)
+    marker.Position = Vector3.new(clickX, clickY, 0)
+    debugPrint(("🔘 Button Position: %d, %d | Size: %d×%d"):format(
+        absPos.X, absPos.Y, absSize.X, absSize.Y
+    ))
+    debugPrint(("🎯 Clicking at: %d, %d"):format(clickX, clickY))
+
+    -- Advanced click simulation
+    local function sendClick(x, y)
+        vr:SendMouseButtonEvent(x, y, 0, true, game, 1)  -- Mouse down
+        task.wait(0.1)  -- Hold duration
+        vr:SendMouseButtonEvent(x, y, 0, false, game, 1) -- Mouse up
+        task.wait(0.3)  -- Cooldown
+    end
+
+    -- Try multiple click positions in case of offset
+    local clickPattern = {
+        {x = 0.45, y = 2.5}  -- Bottom half
+    }
+
+    for _, pos in ipairs(clickPattern) do
+        local targetX = math.floor(absPos.X + absSize.X * pos.x)
+        local targetY = math.floor(absPos.Y + absSize.Y * pos.y)
+        
+        marker.Position = Vector3.new(targetX, targetY, 0)
+        debugPrint(("🔄 Trying click at: %d, %d (%.0f%%, %.0f%%)"):format(
+            targetX, targetY, pos.x*100, pos.y*100
+        ))
+        
+        sendClick(targetX, targetY)
+        
+        -- Verify if click worked by checking if GUI disappeared
+        if not player.PlayerGui:FindFirstChild("Gift_Notification") then
+            debugPrint("✅ Success! Gift accepted")
+            marker:Destroy()
+            return true
+        end
+    end
+    
+    debugPrint("❌ All click attempts failed")
+    return false
+end
+
+-- Main monitoring loop
+debugPrint("Starting ultra-precise gift accepter...")
+runService.Heartbeat:Connect(function()
+    -- Check for the full GUI path
+    if clickAcceptButton() then
+        debugPrint("Gift successfully processed!")
+    end
+end)
+
+-- Auto-cleanup
+game:GetService("UserInputService").WindowFocusReleased:Connect(function()
+    if marker then
+        marker:Destroy()
+    end
+end)"
