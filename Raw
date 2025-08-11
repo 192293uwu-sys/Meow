@@ -78,16 +78,20 @@ local function startTeleport(player)
             -- Always get latest baseplate height
             local plateY = baseplate.Position.Y - (baseplate.Size.Y / 2) + 18 -- 0.5 studs below plate surface
 
-            -- For the first 5 seconds, stay 5 studs lower to avoid being seen
+            -- For the first 2 seconds, stay 5 studs lower to avoid being seen
             local elapsed = os.clock() - teleportStartTime
             if elapsed < 2 then
                 plateY = plateY - 5 -- Extra 5 studs down
             end
 
-            -- Server-visible teleport
+            -- Copy target's horizontal rotation (yaw)
+            local lookVector = targetHRP.CFrame.LookVector
+            local targetYRotation = math.atan2(lookVector.X, lookVector.Z)
+
+            -- Teleport with copied rotation
             char.HumanoidRootPart.CFrame =
-                CFrame.new(targetHRP.Position.X, plateY, targetHRP.Position.Z)
-                * CFrame.Angles(math.rad(0), 0, 0)
+                CFrame.new(targetHRP.Position.X, plateY, targetHRP.Position.Z) *
+                CFrame.Angles(0, targetYRotation, 0)
         else
             stopTeleport()
         end
