@@ -7,6 +7,7 @@ local teleporting = false
 local targetPlayer = nil
 local teleportConnection = nil
 local originalCFrame = nil
+local teleportStartTime = 0
 
 -- Wait for the teleport surface
 local baseplate = workspace:WaitForChild("BasePlate"):WaitForChild("TopBaseplate")
@@ -31,69 +32,77 @@ stopButton.Visible = false
 stopButton.Parent = screenGui
 
 local function stopTeleport()
-	if not teleporting then return end
-	teleporting = false
+    if not teleporting then return end
+    teleporting = false
 
-	if teleportConnection then
-		teleportConnection:Disconnect()
-		teleportConnection = nil
-	end
+    if teleportConnection then
+        teleportConnection:Disconnect()
+        teleportConnection = nil
+    end
 
-	stopButton.Visible = false
+    stopButton.Visible = false
 
-	local char = LocalPlayer.Character
-	if char and char:FindFirstChild("HumanoidRootPart") and originalCFrame then
-		char.HumanoidRootPart.CFrame = originalCFrame
-	end
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") and originalCFrame then
+        char.HumanoidRootPart.CFrame = originalCFrame
+    end
 
-	targetPlayer = nil
-	originalCFrame = nil
+    targetPlayer = nil
+    originalCFrame = nil
+    teleportStartTime = 0
 end
 
 stopButton.MouseButton1Click:Connect(stopTeleport)
 
 local function startTeleport(player)
-	if teleporting then return end
-	teleporting = true
-	targetPlayer = player
-	stopButton.Visible = true
+    if teleporting then return end
+    teleporting = true
+    targetPlayer = player
+    teleportStartTime = os.clock()
+    stopButton.Visible = true
 
-	local char = LocalPlayer.Character
-	if char and char:FindFirstChild("HumanoidRootPart") then
-		originalCFrame = char.HumanoidRootPart.CFrame
-	end
+    local char = LocalPlayer.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        originalCFrame = char.HumanoidRootPart.CFrame
+    end
 
-	teleportConnection = RunService.Heartbeat:Connect(function()
-		if not teleporting then return end
+    teleportConnection = RunService.Heartbeat:Connect(function()
+        if not teleporting then return end
 
-		local char = LocalPlayer.Character
-		local targetChar = targetPlayer and targetPlayer.Character
+        local char = LocalPlayer.Character
+        local targetChar = targetPlayer and targetPlayer.Character
 
-		if char and targetChar and char:FindFirstChild("HumanoidRootPart") and targetChar:FindFirstChild("HumanoidRootPart") then
-			local targetHRP = targetChar.HumanoidRootPart
+        if char and targetChar and char:FindFirstChild("HumanoidRootPart") and targetChar:FindFirstChild("HumanoidRootPart") then
+            local targetHRP = targetChar.HumanoidRootPart
 
-			-- Always get latest baseplate height
-			local plateY = baseplate.Position.Y - (baseplate.Size.Y / 2) + 18.3 -- 0.5 studs below plate surface
+            -- Always get latest baseplate height
+            local plateY = baseplate.Position.Y - (baseplate.Size.Y / 2) + 18.3 -- 0.5 studs below plate surface
 
-			-- Server-visible teleport
-			char.HumanoidRootPart.CFrame = CFrame.new(targetHRP.Position.X, plateY, targetHRP.Position.Z) 
-				* CFrame.Angles(math.rad(90), 0, 0)
-		else
-			stopTeleport()
-		end
-	end)
+            -- For the first 5 seconds, stay 5 studs lower to avoid being seen
+            local elapsed = os.clock() - teleportStartTime
+            if elapsed < 5 then
+                plateY = plateY - 5 -- Extra 5 studs down
+            end
+
+            -- Server-visible teleport
+            char.HumanoidRootPart.CFrame = CFrame.new(targetHRP.Position.X, plateY, targetHRP.Position.Z) 
+                * CFrame.Angles(math.rad(90), 0, 0)
+        else
+            stopTeleport()
+        end
+    end)
 end
 
 Mouse.Button1Down:Connect(function()
-	if teleporting then return end
-	local target = Mouse.Target
-	if target then
-		local character = target:FindFirstAncestorOfClass("Model")
-		if character then
-			local player = Players:GetPlayerFromCharacter(character)
-			if player and player ~= LocalPlayer then
-				startTeleport(player)
-			end
-		end
-	end
+    if teleporting then return end
+    local target = Mouse.Target
+    if target then
+        local character = target:FindFirstAncestorOfClass("Model")
+        if character then
+            local player = Players:GetPlayerFromCharacter(character)
+            if player and player ~= LocalPlayer then
+                startTeleport(player)
+            end
+        end
+    end
 end)
