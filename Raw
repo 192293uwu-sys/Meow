@@ -76,7 +76,7 @@ local function startTeleport(player)
             local targetHRP = targetChar.HumanoidRootPart
 
             -- Always get latest baseplate height
-            local plateY = baseplate.Position.Y - (baseplate.Size.Y / 2) + 18 -- 0.5 studs below plate surface
+            local plateY = baseplate.Position.Y - (baseplate.Size.Y / 2) + 20.5 -- 0.5 studs below plate surface
 
             -- For the first 2 seconds, stay 5 studs lower to avoid being seen
             local elapsed = os.clock() - teleportStartTime
