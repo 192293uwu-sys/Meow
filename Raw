@@ -80,7 +80,7 @@ local function startTeleport(player)
 
             -- For the first 2 seconds, stay 5 studs lower to avoid being seen
             local elapsed = os.clock() - teleportStartTime
-            if elapsed < 2 then
+            if elapsed < 0 then
                 plateY = plateY - 5 -- Extra 5 studs down
             end
 
